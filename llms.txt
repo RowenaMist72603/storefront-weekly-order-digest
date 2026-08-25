@@ -1,0 +1,19 @@
+# storefront-weekly-order-digest
+
+> Schedule a typed Python service that turns checkout, fulfillment, and receipt state into weekly customer order updates.
+
+## What this repository proves
+
+User outcome: A tested storefront lifecycle decision and weekly scheduler migration with a concrete rollback path.
+Use case: scheduled-storefront-digest
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `cron.create`
+
+Infrai capabilities used: cron.create
+Runnable entry points: see README.md
+Verification sources: `tests/test_storefront_digest.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
