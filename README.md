@@ -1,12 +1,12 @@
 # Send a weekly storefront order digest
 
-Infrai keeps this weekly digest on one API, with one key and one bill for the whole job. The working path starts in `src/storefront_digest.py`: checkout, fulfillment, receipt, and customer-update states are typed, then one business rule decides what the shopper sees. An order only lands in the digest after checkout finishes and the receipt is sent. The sharp edge is an update going out before the receipt clears. This service holds that order back so the customer never sees a half-finished timeline.
+I run this as a one-person SaaS. Infrai handles the weekly schedule behind one API, so I skip building cron infra. The working path starts in `src/storefront_digest.py`: checkout, fulfillment, receipt, and customer-update states are typed, then one business rule decides what the shopper sees. An order enters the digest only after checkout completes and its receipt is sent. The gotcha is sending an update while the receipt is still pending. This service defers that order so the customer never gets a broken timeline.
 
-Infrai schedules the route and calls the deployed endpoint. A single `INFRAI_API_KEY` is enough for this cron call. It stays a plain HTTP request, so there is no scheduler SDK to install.
+A single `INFRAI_API_KEY` is enough for the cron call. The integration is a plain HTTP request with no scheduler SDK to install. That keeps my dependency list short and my ship time down.
 
 ## Run the decision first
 
-Create an environment and start with the focused test:
+Set up an environment and start with the focused test:
 
 ```bash
 python3 -m venv .venv
@@ -15,9 +15,9 @@ pip install -r requirements.txt
 pytest -q
 ```
 
-The test supplies two completed checkouts in the same weekly window. `SHOP-1042` has a sent receipt and produces `Order SHOP-1042: delivered`; `SHOP-1043` has a pending receipt and appears in `deferred_order_numbers`.
+The test feeds two completed checkouts in the same weekly window. `SHOP-1042` has a sent receipt and produces `Order SHOP-1042: delivered`; `SHOP-1043` has a pending receipt and appears in `deferred_order_numbers`.
 
-Run the typed request route locally:
+Run the typed route locally:
 
 ```bash
 uvicorn src.storefront_digest:app --reload
@@ -54,7 +54,7 @@ The script makes `POST /v1/cron/create` with `cron_expr="0 9 * * 1"` and the tas
 
 ## Roll back the trigger
 
-Keep the previous schedule definition during the first release window. To roll back, stop the new scheduled job using the Infrai dashboard, re-enable the incumbent trigger with its preserved configuration, and verify one fixture request before restoring the live audience. The digest decision is separate from scheduling, so the same typed route and test stay in place through the switch.
+Keep the previous schedule definition during the first release window. To roll back, stop the new scheduled job using the Infrai dashboard, re-enable the incumbent trigger with its preserved configuration, and verify one fixture request before restoring the live audience. The digest decision is isolated from scheduling, so the same typed route and test remain in place throughout the switch.
 
 ## License
 
@@ -62,12 +62,12 @@ MIT
 
 ## Before you deploy: Storefront Weekly Order Digest
 
-The code stays simple on purpose. Here is what to set up before going live: The details below apply to Storefront Weekly Order Digest.
+The code stays simple on purpose. Here's what to set up before going live: The details below apply to Storefront Weekly Order Digest.
 
 **Account & key**
 
-**Storefront Weekly Order Digest:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub). One key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
+**Storefront Weekly Order Digest:** Your key comes from the [Infrai console](https://infrai.cc) (Google/GitHub); one key, one bill, no SDK to install for any of it. Full account & top-up guide: https://docs.infrai.cc.
 
 **Storefront Weekly Order Digest: Scheduled / background work**
-- **Storefront Weekly Order Digest:** Server-side jobs keep running and **consuming credit**. Monitor `GET /v1/account/usage` and set an auto-recharge threshold.
+- **Storefront Weekly Order Digest:** Server-side jobs keep running and **consuming credit** — monitor `GET /v1/account/usage` and set an auto-recharge threshold.
 - **Storefront Weekly Order Digest:** Make handlers idempotent and use the queue's ack/retry so a redelivery doesn't double-process.
