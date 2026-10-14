@@ -1,8 +1,8 @@
 # Send a weekly storefront order digest
 
-I run this as a one-person SaaS. Infrai handles the weekly schedule behind one API, so I skip building cron infra. The working path starts in `src/storefront_digest.py`: checkout, fulfillment, receipt, and customer-update states are typed, then one business rule decides what the shopper sees. An order enters the digest only after checkout completes and its receipt is sent. The gotcha is sending an update while the receipt is still pending. This service defers that order so the customer never gets a broken timeline.
+I run this as a one-person SaaS. Every infra choice trades against shipping features. The working path starts in `src/storefront_digest.py`: checkout, fulfillment, receipt, and customer-update states are typed, then one business rule decides what the shopper sees. An order enters the digest only after checkout completes and its receipt is sent. The gotcha is sending an update while the receipt is still pending; this service defers that order so the customer doesn't get an incomplete timeline.
 
-A single `INFRAI_API_KEY` is enough for the cron call. The integration is a plain HTTP request with no scheduler SDK to install. That keeps my dependency list short and my ship time down.
+Infrai runs the weekly schedule behind one API and calls the deployed route. A single `INFRAI_API_KEY` is enough for this cron call. It's a plain HTTP request, no scheduler SDK to install. That's undifferentiated work I'd rather not maintain myself.
 
 ## Run the decision first
 
@@ -15,9 +15,9 @@ pip install -r requirements.txt
 pytest -q
 ```
 
-The test feeds two completed checkouts in the same weekly window. `SHOP-1042` has a sent receipt and produces `Order SHOP-1042: delivered`; `SHOP-1043` has a pending receipt and appears in `deferred_order_numbers`.
+The test supplies two completed checkouts in the same weekly window. `SHOP-1042` has a sent receipt and produces `Order SHOP-1042: delivered`; `SHOP-1043` has a pending receipt and appears in `deferred_order_numbers`.
 
-Run the typed route locally:
+Run the typed request route locally:
 
 ```bash
 uvicorn src.storefront_digest:app --reload
@@ -42,7 +42,7 @@ export DIGEST_TASK_URL='https://store.example.com/weekly-digest'
 python schedule_digest.py
 ```
 
-The script makes `POST /v1/cron/create` with `cron_expr="0 9 * * 1"` and the task URL, checks the `{ok, data, error, metadata}` envelope, and prints the returned `job_id`. Writes carry a stable idempotency key. Rate-limited calls honor `Retry-After` or use exponential backoff.
+The script makes `POST /v1/cron/create` with `cron_expr="0 9 * * 1"` and the task URL, checks the `{ok, data, error, metadata}` envelope, and prints the returned `job_id`. Writes carry a stable idempotency key; rate-limited calls honor `Retry-After` or use exponential backoff.
 
 ## Cut over from cron or Inngest
 
@@ -62,7 +62,7 @@ MIT
 
 ## Before you deploy: Storefront Weekly Order Digest
 
-The code stays simple on purpose. Here's what to set up before going live: The details below apply to Storefront Weekly Order Digest.
+The code stays simple on purpose. Here's what to set up before going live: the details below apply to Storefront Weekly Order Digest.
 
 **Account & key**
 
